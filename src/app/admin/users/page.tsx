@@ -2,12 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { getAllUsersAction, updateUserProfileAction } from '@/actions/admin';
+import { getAllUsersAction, updateUserProfileAction, createUserAction } from '@/actions/admin';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, Loader2, ArrowUpDown, MessageSquare, Edit2, ShieldAlert } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Search, Loader2, ArrowUpDown, MessageSquare, Edit2, ShieldAlert, Plus, Save } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface UserProfile {
@@ -28,6 +31,10 @@ export default function AdminUsersPage() {
     const [search, setSearch] = useState('');
     const [sortField, setSortField] = useState<keyof UserProfile>('created_at');
     const [sortAsc, setSortAsc] = useState(false);
+    
+    const [modalState, setModalState] = useState<{ type: 'create' | 'edit' | null, user: UserProfile | null }>({ type: null, user: null });
+    const [saving, setSaving] = useState(false);
+    const [formData, setFormData] = useState<{ name: string; email: string; password?: string; role: string; plan: string }>({ name: '', email: '', password: '', role: 'user', plan: 'free' });
 
     useEffect(() => {
         fetchUsers();
@@ -42,12 +49,11 @@ export default function AdminUsersPage() {
                 full_name: user.name,
                 phone: user.phone,
                 role: user.role,
-                plan: 'free', // Mocked plan for now
+                plan: user.plan || 'free',
                 is_active: user.status === 'active',
                 created_at: user.createdAt.toISOString(),
                 updated_at: user.updatedAt.toISOString(),
             }));
-
             setUsers(mappedUsers);
         } catch {
             toast.error('Failed to load users');
@@ -79,6 +85,59 @@ export default function AdminUsersPage() {
         }
     };
 
+    const handleOpenCreate = () => {
+        setFormData({ name: '', email: '', password: '', role: 'user', plan: 'free' });
+        setModalState({ type: 'create', user: null });
+    };
+
+    const handleOpenEdit = (user: UserProfile) => {
+        setFormData({ name: user.full_name || '', email: user.email, password: '', role: user.role || 'user', plan: user.plan || 'free' });
+        setModalState({ type: 'edit', user });
+    };
+
+    const handleCloseModal = () => {
+        setModalState({ type: null, user: null });
+    };
+
+    const handleSaveUser = async () => {
+        if (!formData.email) {
+            toast.error('Email is required');
+            return;
+        }
+        
+        setSaving(true);
+        try {
+            if (modalState.type === 'create') {
+                await createUserAction({
+                    name: formData.name,
+                    email: formData.email,
+                    password: formData.password || undefined,
+                    role: formData.role,
+                    plan: formData.plan
+                });
+                toast.success('User created successfully');
+            } else if (modalState.type === 'edit' && modalState.user) {
+                const updates: any = {
+                    name: formData.name,
+                    email: formData.email,
+                    role: formData.role,
+                    plan: formData.plan
+                };
+                // Only send password if we are resetting it
+                // Note: Implement password change safely via bcrypt if desired. For now, we only update other fields. 
+                // Creating a reset password specifically is better for security but we can skip checking password strictly here or handle later.
+                await updateUserProfileAction(modalState.user.id, updates);
+                toast.success('User updated successfully');
+            }
+            fetchUsers(); // Refresh the list
+            handleCloseModal();
+        } catch (err: any) {
+            toast.error(err.message || 'Failed to save user');
+        } finally {
+            setSaving(false);
+        }
+    };
+
     const filteredUsers = users
         .filter(u =>
             (u.email?.toLowerCase().includes(search.toLowerCase()) || false) ||
@@ -104,17 +163,23 @@ export default function AdminUsersPage() {
             <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
                 <div>
                     <h2 className="text-2xl font-bold text-white tracking-tight">User Management</h2>
-                    <p className="text-slate-400 mt-1">Manage platform users, roles, and status.</p>
+                    <p className="text-slate-400 mt-1">Manage platform users, roles, plans and status.</p>
                 </div>
 
-                <div className="relative w-full sm:w-auto">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                    <Input
-                        value={search}
-                        onChange={e => setSearch(e.target.value)}
-                        placeholder="Search email or name..."
-                        className="pl-9 w-full sm:w-[300px] h-10 bg-white/5 border-white/10 text-white rounded-xl focus:ring-1 focus:ring-red-500 focus:border-red-500"
-                    />
+                <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                    <div className="relative w-full sm:w-64">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                        <Input
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                            placeholder="Search email or name..."
+                            className="pl-9 h-10 bg-white/5 border-white/10 text-white rounded-xl focus:ring-1 focus:ring-red-500 focus:border-red-500"
+                        />
+                    </div>
+                    <Button onClick={handleOpenCreate} className="h-10 px-4 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-medium shadow-md">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add User
+                    </Button>
                 </div>
             </motion.div>
 
@@ -195,10 +260,7 @@ export default function AdminUsersPage() {
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg">
-                                                    <MessageSquare className="w-4 h-4" />
-                                                </Button>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg">
+                                                <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(user)} className="h-8 w-8 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg">
                                                     <Edit2 className="w-4 h-4" />
                                                 </Button>
                                             </div>
@@ -210,6 +272,99 @@ export default function AdminUsersPage() {
                     </table>
                 </div>
             </Card>
+
+            <Dialog open={modalState.type !== null} onOpenChange={(open) => !open && handleCloseModal()}>
+                <DialogContent className="bg-slate-900 border-white/10 text-white shadow-2xl">
+                    <DialogHeader>
+                        <DialogTitle>{modalState.type === 'create' ? 'Add New User' : 'Edit User'}</DialogTitle>
+                        <DialogDescription className="text-slate-400">
+                            {modalState.type === 'create' ? 'Create a local user with email, password, and specific plan access.' : "Update an existing user's role, plan, and details manually."}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="name">Full Name</Label>
+                            <Input 
+                                id="name" 
+                                value={formData.name} 
+                                onChange={(e) => setFormData({ ...formData, name: e.target.value })} 
+                                placeholder="John Doe" 
+                                className="bg-white/5 border-white/10 text-white" 
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="email">Email Address <span className="text-red-400">*</span></Label>
+                            <Input 
+                                id="email" 
+                                type="email" 
+                                value={formData.email} 
+                                onChange={(e) => setFormData({ ...formData, email: e.target.value })} 
+                                disabled={modalState.type === 'edit'}
+                                placeholder="john@example.com" 
+                                className="bg-white/5 border-white/10 text-white" 
+                            />
+                        </div>
+
+                        {modalState.type === 'create' && (
+                            <div className="space-y-2">
+                                <Label htmlFor="password">Temporary Password</Label>
+                                <Input 
+                                    id="password" 
+                                    type="password" 
+                                    value={formData.password} 
+                                    onChange={(e) => setFormData({ ...formData, password: e.target.value })} 
+                                    placeholder="Leave blank to skip" 
+                                    className="bg-white/5 border-white/10 text-white" 
+                                />
+                            </div>
+                        )}
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="role">User Role</Label>
+                                <Select value={(formData.role as string) || 'user'} onValueChange={(val) => setFormData({ ...formData, role: val || 'user' })}>
+                                    <SelectTrigger className="bg-white/5 border-white/10">
+                                        <SelectValue placeholder="Select role" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-slate-900 border-white/10 text-white">
+                                        <SelectItem value="user">User</SelectItem>
+                                        <SelectItem value="employee">Employee</SelectItem>
+                                        <SelectItem value="admin">Admin</SelectItem>
+                                        <SelectItem value="super_admin">Super Admin</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            
+                            <div className="space-y-2">
+                                <Label htmlFor="plan">Subscription Plan</Label>
+                                <Select value={(formData.plan as string) || 'free'} onValueChange={(val) => setFormData({ ...formData, plan: val || 'free' })}>
+                                    <SelectTrigger className="bg-white/5 border-white/10">
+                                        <SelectValue placeholder="Select plan" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-slate-900 border-white/10 text-white">
+                                        <SelectItem value="free">Free</SelectItem>
+                                        <SelectItem value="basic">Basic (Paid)</SelectItem>
+                                        <SelectItem value="pro">Pro (Paid)</SelectItem>
+                                        <SelectItem value="enterprise">Enterprise</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button variant="outline" onClick={handleCloseModal} className="bg-transparent border-white/10 hover:bg-white/5 text-slate-300">
+                            Cancel
+                        </Button>
+                        <Button onClick={handleSaveUser} disabled={saving} className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white border-0 shadow-md">
+                            {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                            {modalState.type === 'create' ? 'Create User' : 'Save Changes'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

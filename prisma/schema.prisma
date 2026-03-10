@@ -46,6 +46,7 @@ model User {
   password      String?
   role          String    @default("user") // "user", "admin", "employee"
   status        String    @default("active") // "active", "suspended"
+  plan          String    @default("free")
   companyName   String?   @map("company_name")
   phone         String?
   

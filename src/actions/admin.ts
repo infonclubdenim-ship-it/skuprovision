@@ -3,6 +3,7 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import bcrypt from 'bcryptjs';
 import type { AdminStats, Profile, PlanRequest, ContactMessage } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
 
@@ -80,10 +81,37 @@ export async function getAllUsersAction(): Promise<any[]> {
 
 export async function updateUserProfileAction(userId: string, updates: any) {
     await checkAdmin();
-    return await prisma.user.update({
+    const result = await prisma.user.update({
         where: { id: userId },
         data: updates
     });
+    revalidatePath('/admin/users');
+    return result;
+}
+
+export async function createUserAction(data: { name: string, email: string, password?: string, plan?: string, role?: string }) {
+    await checkAdmin();
+    
+    const existing = await prisma.user.findUnique({ where: { email: data.email } });
+    if (existing) throw new Error('User with this email already exists');
+    
+    let hashedPassword = null;
+    if (data.password) {
+        hashedPassword = await bcrypt.hash(data.password, 10);
+    }
+
+    await prisma.user.create({
+        data: {
+            name: data.name,
+            email: data.email,
+            password: hashedPassword,
+            role: data.role || 'user',
+            plan: data.plan || 'free',
+            status: 'active'
+        }
+    });
+
+    revalidatePath('/admin/users');
 }
 
 export async function getPlanRequestsAction(): Promise<any[]> {
