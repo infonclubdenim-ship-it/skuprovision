@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { AnimatedLogo } from './AnimatedLogo';
 import { useAuth } from '@/hooks/useAuth';
@@ -31,6 +31,7 @@ export function Header() {
     const [scrolled, setScrolled] = useState(false);
     const [mobileOpen, setMobileOpen] = useState(false);
     const pathname = usePathname();
+    const router = useRouter(); // Initialize router here
 
     // Don't show header on dashboard, admin, login, signup, or auth callback pages
     const hideHeader =
@@ -115,11 +116,11 @@ export function Header() {
                                     align="end"
                                     className="w-48 bg-slate-900 border-white/10 text-slate-300"
                                 >
-                                    <DropdownMenuItem className="cursor-pointer" onSelect={() => window.location.href = '/dashboard/'}>
+                                    <DropdownMenuItem className="cursor-pointer" onSelect={() => router.push('/dashboard/')}>
                                         <LayoutDashboard className="w-4 h-4 mr-2" />
                                         Dashboard
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem className="cursor-pointer" onSelect={() => window.location.href = '/dashboard/account/'}>
+                                    <DropdownMenuItem className="cursor-pointer" onSelect={() => router.push('/dashboard/account/')}>
                                         <User className="w-4 h-4 mr-2" />
                                         Account
                                     </DropdownMenuItem>

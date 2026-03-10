@@ -38,6 +38,7 @@ export default function AddProductPage() {
         description: '',
         mrp: '',
         category: '',
+        image_url: '', // Added image URL
     });
     const [childSkus, setChildSkus] = useState<ChildSku[]>([
         { id: crypto.randomUUID(), child_sku: '', size: '', color: '' },
@@ -78,8 +79,8 @@ export default function AddProductPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!user) return;
-        if (!form.product_name.trim() || !form.parent_sku.trim()) {
-            toast.error('Product name and Parent SKU are required');
+        if (!form.parent_sku.trim()) {
+            toast.error('Parent SKU is required');
             return;
         }
 
@@ -87,7 +88,7 @@ export default function AddProductPage() {
         try {
             let uploadedImageUrl: string | null = null;
 
-            // 1. Upload first image if exists
+            // 1. Upload first image if exists, else check URL
             if (images.length > 0) {
                 const compressed = await compressImage(images[0].file);
                 const formData = new FormData();
@@ -108,12 +109,14 @@ export default function AddProductPage() {
                     const uploadData = await uploadRes.json();
                     uploadedImageUrl = uploadData.url;
                 }
+            } else if (form.image_url.trim()) {
+                uploadedImageUrl = form.image_url.trim();
             }
 
             // 2. Insert product and SKUs via API
             const productData = {
                 sku: form.parent_sku.trim().toUpperCase(),
-                title: form.product_name.trim(),
+                title: form.product_name.trim() || form.parent_sku.trim().toUpperCase(), // fallback to SKU if no name
                 description: form.description.trim() || null,
                 category: form.category.trim() || null,
                 main_image: uploadedImageUrl,
@@ -161,13 +164,12 @@ export default function AddProductPage() {
                     <CardContent className="space-y-4">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label className="text-slate-400 text-xs">Product Name *</Label>
+                                <Label className="text-slate-400 text-xs">Product Name</Label>
                                 <Input
                                     value={form.product_name}
                                     onChange={(e) => setForm({ ...form, product_name: e.target.value })}
                                     placeholder="e.g. Men's Cotton T-Shirt"
                                     className="bg-white/5 border-white/10 text-white placeholder:text-slate-600 h-10"
-                                    required
                                 />
                             </div>
                             <div className="space-y-2">
@@ -267,7 +269,28 @@ export default function AddProductPage() {
                             <ImageIcon className="w-4 h-4 text-amber-400" /> Product Images
                         </CardTitle>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                            <Label className="text-slate-400 text-xs">Image URL (Optional)</Label>
+                            <Input
+                                value={form.image_url}
+                                onChange={(e) => setForm({ ...form, image_url: e.target.value })}
+                                placeholder="https://example.com/image.jpg"
+                                className="bg-white/5 border-white/10 text-white placeholder:text-slate-600 h-10"
+                            />
+                        </div>
+
+                        <div className="relative">
+                            <div className="absolute inset-0 flex items-center">
+                                <span className="w-full border-t border-white/10" />
+                            </div>
+                            <div className="relative flex justify-center text-xs uppercase">
+                                <span className="bg-white/[0.02] px-2 text-slate-500">
+                                    or upload files
+                                </span>
+                            </div>
+                        </div>
+
                         <input
                             ref={fileInputRef}
                             type="file"

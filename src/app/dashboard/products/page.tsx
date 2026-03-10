@@ -9,7 +9,7 @@ import { getProductsAction } from '@/actions/products';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Search, Plus, Package, ChevronLeft, ChevronRight, Filter, Loader2 } from 'lucide-react';
+import { Search, Plus, Package, ChevronLeft, ChevronRight, Filter, Loader2, Upload } from 'lucide-react';
 
 interface Product {
     id: string;
@@ -66,13 +66,22 @@ export default function ProductsPage() {
                     <h2 className="text-xl font-bold text-white">Products</h2>
                     <p className="text-sm text-slate-500">{totalCount} products total</p>
                 </div>
-                <Link
-                    href="/dashboard/products/add"
-                    className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-sm font-medium rounded-xl shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 transition-all shrink-0"
-                >
-                    <Plus className="w-4 h-4" />
-                    Add Product
-                </Link>
+                <div className="flex items-center gap-3">
+                    <Link
+                        href="/dashboard/products/bulk"
+                        className="flex items-center gap-2 px-5 py-2.5 bg-white/5 border border-white/10 text-white text-sm font-medium rounded-xl hover:bg-white/10 transition-all shrink-0"
+                    >
+                        <Upload className="w-4 h-4" />
+                        Bulk Upload
+                    </Link>
+                    <Link
+                        href="/dashboard/products/add"
+                        className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-sm font-medium rounded-xl shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 transition-all shrink-0"
+                    >
+                        <Plus className="w-4 h-4" />
+                        Add Product
+                    </Link>
+                </div>
             </div>
 
             {/* Search */}

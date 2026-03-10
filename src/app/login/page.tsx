@@ -4,21 +4,29 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { signIn } from 'next-auth/react';
+import { signIn, useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, LogIn, Package, ArrowLeft, Mail } from 'lucide-react';
 import { toast } from 'sonner';
+import { useEffect } from 'react';
 
 export default function LoginPage() {
+    const { status } = useSession();
     const [loading, setLoading] = useState(false);
     const [emailLoading, setEmailLoading] = useState(false);
     const [showEmailForm, setShowEmailForm] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const router = useRouter();
+
+    useEffect(() => {
+        if (status === 'authenticated') {
+            router.replace('/dashboard');
+        }
+    }, [status, router]);
 
     const handleGoogleLogin = async () => {
         setLoading(true);
