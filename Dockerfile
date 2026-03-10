@@ -3,8 +3,10 @@ FROM node:20-alpine AS base
 # Install dependencies
 FROM base AS deps
 WORKDIR /app
+# Cache bust v2
+ARG CACHEBUST=1
 COPY package.json package-lock.json ./
-RUN npm install
+RUN npm install --legacy-peer-deps
 
 # Build the application
 FROM base AS builder
