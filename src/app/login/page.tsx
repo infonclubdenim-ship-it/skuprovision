@@ -6,22 +6,56 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { signIn } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, LogIn, Package, ArrowLeft } from 'lucide-react';
+import { Loader2, LogIn, Package, ArrowLeft, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function LoginPage() {
     const [loading, setLoading] = useState(false);
+    const [emailLoading, setEmailLoading] = useState(false);
+    const [showEmailForm, setShowEmailForm] = useState(false);
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const router = useRouter();
 
     const handleGoogleLogin = async () => {
         setLoading(true);
         try {
             await signIn('google', { callbackUrl: '/dashboard' });
-            // If successful, the browser will redirect to Google OAuth
         } catch {
             toast.error('Something went wrong. Please try again.');
             setLoading(false);
+        }
+    };
+
+    const handleEmailLogin = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!email || !password) {
+            toast.error('Please enter your email and password');
+            return;
+        }
+
+        setEmailLoading(true);
+        try {
+            const res = await signIn('credentials', {
+                redirect: false,
+                email,
+                password,
+            });
+
+            if (res?.error) {
+                toast.error('Invalid email or password');
+                setEmailLoading(false);
+                return;
+            }
+
+            toast.success('Welcome back!');
+            router.push('/dashboard');
+        } catch {
+            toast.error('Something went wrong. Please try again.');
+            setEmailLoading(false);
         }
     };
 
@@ -64,7 +98,7 @@ export default function LoginPage() {
                         </div>
                     </CardHeader>
 
-                    <CardContent className="space-y-6 pt-4">
+                    <CardContent className="space-y-5 pt-4">
                         {/* Google Sign In Button */}
                         <Button
                             onClick={handleGoogleLogin}
@@ -84,16 +118,80 @@ export default function LoginPage() {
                             {loading ? 'Signing in...' : 'Continue with Google'}
                         </Button>
 
+                        {/* Divider */}
                         <div className="relative">
                             <div className="absolute inset-0 flex items-center">
                                 <span className="w-full border-t border-white/10" />
                             </div>
                             <div className="relative flex justify-center text-xs uppercase">
                                 <span className="bg-transparent px-2 text-slate-500">
-                                    secure login via Google
+                                    or sign in with email
                                 </span>
                             </div>
                         </div>
+
+                        {/* Email/Password Toggle */}
+                        {!showEmailForm ? (
+                            <Button
+                                onClick={() => setShowEmailForm(true)}
+                                variant="outline"
+                                className="w-full h-12 bg-white/5 border-white/10 text-white hover:bg-white/10 hover:text-white font-medium text-base rounded-xl transition-all duration-200"
+                            >
+                                <Mail className="mr-2 h-5 w-5" />
+                                Sign in with Email & Password
+                            </Button>
+                        ) : (
+                            <motion.form
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                transition={{ duration: 0.3 }}
+                                onSubmit={handleEmailLogin}
+                                className="space-y-4"
+                            >
+                                <div className="space-y-2">
+                                    <Label htmlFor="email" className="text-slate-400 text-sm">
+                                        Email
+                                    </Label>
+                                    <Input
+                                        id="email"
+                                        type="email"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        placeholder="you@example.com"
+                                        className="bg-white/5 border-white/10 text-white placeholder:text-slate-600 focus:border-blue-500/50 h-11"
+                                        required
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="password" className="text-slate-400 text-sm">
+                                        Password
+                                    </Label>
+                                    <Input
+                                        id="password"
+                                        type="password"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        placeholder="••••••••"
+                                        className="bg-white/5 border-white/10 text-white placeholder:text-slate-600 focus:border-blue-500/50 h-11"
+                                        required
+                                    />
+                                </div>
+
+                                <Button
+                                    type="submit"
+                                    disabled={emailLoading}
+                                    className="w-full h-11 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-medium rounded-xl transition-all duration-200 hover:shadow-lg hover:shadow-blue-500/20"
+                                >
+                                    {emailLoading ? (
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <LogIn className="mr-2 h-4 w-4" />
+                                    )}
+                                    {emailLoading ? 'Signing in...' : 'Sign In'}
+                                </Button>
+                            </motion.form>
+                        )}
 
                         {/* Trust badges */}
                         <div className="flex items-center justify-center gap-4 text-xs text-slate-500">
